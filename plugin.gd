@@ -7,26 +7,26 @@ var _google_plugin: EditorPlugin
 func _enter_tree() -> void:
 	# Keep the public name stable for existing code.
 	if not ProjectSettings.has_setting("autoload/%s" % _autoload_name):
-		add_autoload_singleton(_autoload_name, "res://addons/iap_core/iap.gd")
+		add_autoload_singleton(_autoload_name, "res://addons/IAPCore/iap.gd")
 	else:
 		# If already registered, ensure path points to the plugin version.
 		var existing_path := ProjectSettings.get_setting("autoload/%s" % _autoload_name)
-		if String(existing_path) != "res://addons/iap_core/iap.gd":
+		if String(existing_path) != "res://addons/IAPCore/iap.gd":
 			remove_autoload_singleton(_autoload_name)
-			add_autoload_singleton(_autoload_name, "res://addons/iap_core/iap.gd")
+			add_autoload_singleton(_autoload_name, "res://addons/IAPCore/iap.gd")
 	_enable_google_billing()
 
 
 func _exit_tree() -> void:
 	if ProjectSettings.has_setting("autoload/%s" % _autoload_name):
 		var existing_path := ProjectSettings.get_setting("autoload/%s" % _autoload_name)
-		if String(existing_path) == "res://addons/iap_core/iap.gd":
+		if String(existing_path) == "res://addons/IAPCore/iap.gd":
 			remove_autoload_singleton(_autoload_name)
 	_disable_google_billing()
 
 
 func _enable_google_billing() -> void:
-	var path := "res://addons/iap_core/GodotGooglePlayBilling/export_plugin.gd"
+	var path := "res://addons/IAPCore/GodotGooglePlayBilling/export_plugin.gd"
 	if not FileAccess.file_exists(path):
 		push_warning("IapCore: Google Play Billing addon not found at %s; Android IAP will run in stub mode." % path)
 		return

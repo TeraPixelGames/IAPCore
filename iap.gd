@@ -182,7 +182,6 @@ func _on_android_consume_response(response: Dictionary) -> void:
 
 func _on_android_purchase_success(product_id: String) -> void:
 	print("IapManager(Android): Purchase success for %s" % product_id)
-	grant_coins_for_product(product_id)
 	purchase_succeeded.emit(product_id)
 
 
@@ -258,7 +257,6 @@ func _setup_ios_storekit() -> void:
 	if _ios_iap.has_signal("purchase_success"):
 		_ios_iap.purchase_success.connect(func(product_id: String) -> void:
 			print("IapManager(iOS): Purchase success for %s" % product_id)
-			grant_coins_for_product(product_id)
 			purchase_succeeded.emit(product_id)
 		)
 	if _ios_iap.has_signal("purchase_fail"):
@@ -304,7 +302,6 @@ func _buy_stub(product_id: String) -> void:
 		return
 	print("IapManager(Stub): Simulating purchase for %s" % product_id)
 	purchase_started.emit(product_id)
-	grant_coins_for_product(product_id)
 	purchase_succeeded.emit(product_id)
 
 
@@ -317,17 +314,3 @@ func _emit_stub_prices() -> void:
 
 func get_product_price(product_id: String) -> String:
 	return _product_prices.get(product_id, "")
-
-
-func grant_coins_for_product(product_id: String) -> void:
-	match product_id:
-		"coins_small", "com.mygame.coins_small":
-			CoinWallet.add_coins(120)
-		"coins_medium", "com.mygame.coins_medium":
-			CoinWallet.add_coins(350)
-		"coins_large", "com.mygame.coins_large":
-			CoinWallet.add_coins(900)
-		"coins_ultra", "com.mygame.coins_ultra":
-			CoinWallet.add_coins(2000)
-		_:
-			push_warning("IapManager: Unknown product for granting coins (%s)" % product_id)
