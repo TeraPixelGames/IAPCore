@@ -25,6 +25,7 @@ var _ios_iap: Object
 var _android_product_for_token: Dictionary = {} # token -> product_id for ack/consume callbacks
 var _android_pending_product_id: String = ""
 var _product_prices: Dictionary = {} # product_id -> formatted price string
+var _force_stub: bool = false
 
 signal purchase_started(product_id: String)
 signal purchase_succeeded(product_id: String)
@@ -33,6 +34,11 @@ signal product_price_updated(product_id: String, price: String)
 
 
 func _ready() -> void:
+	if Config.should_mock_iap():
+		_force_stub = true
+		_emit_stub_prices()
+		print("IapManager: running in mock mode.")
+		return
 	# Ensure wallet is loaded before any purchase callbacks land.
 	if Engine.has_singleton("CoinWallet") and Engine.get_singleton("CoinWallet").has_method("load_from_disk"):
 		Engine.get_singleton("CoinWallet").load_from_disk()
@@ -67,6 +73,9 @@ func buy_ultra_pack() -> void:
 
 
 func _buy(key: String) -> void:
+	if _force_stub:
+		_buy_stub(PRODUCTS_ANDROID.get(key, PRODUCTS_IOS.get(key, "")))
+		return
 	if is_android:
 		_buy_android(PRODUCTS_ANDROID.get(key, ""))
 	elif is_ios:
@@ -182,6 +191,7 @@ func _on_android_consume_response(response: Dictionary) -> void:
 
 func _on_android_purchase_success(product_id: String) -> void:
 	print("IapManager(Android): Purchase success for %s" % product_id)
+	grant_coins_for_product(product_id)
 	purchase_succeeded.emit(product_id)
 
 
@@ -257,6 +267,7 @@ func _setup_ios_storekit() -> void:
 	if _ios_iap.has_signal("purchase_success"):
 		_ios_iap.purchase_success.connect(func(product_id: String) -> void:
 			print("IapManager(iOS): Purchase success for %s" % product_id)
+			grant_coins_for_product(product_id)
 			purchase_succeeded.emit(product_id)
 		)
 	if _ios_iap.has_signal("purchase_fail"):
@@ -302,6 +313,7 @@ func _buy_stub(product_id: String) -> void:
 		return
 	print("IapManager(Stub): Simulating purchase for %s" % product_id)
 	purchase_started.emit(product_id)
+	grant_coins_for_product(product_id)
 	purchase_succeeded.emit(product_id)
 
 
@@ -314,3 +326,29 @@ func _emit_stub_prices() -> void:
 
 func get_product_price(product_id: String) -> String:
 	return _product_prices.get(product_id, "")
+
+func grant_coins_for_product(product_id: String) -> void:
+	match product_id:
+		"coins_small", "com.mygame.coins_small":
+			_grant(1000)
+		"coins_medium", "com.mygame.coins_medium":
+			_grant(5000)
+		"coins_large", "com.mygame.coins_large":
+			_grant(12000)
+		"coins_ultra", "com.mygame.coins_ultra":
+			_grant(30000)
+		_:
+			push_warning("IapManager: Unknown product for granting coins (%s)" % product_id)
+
+func _grant(amount: int) -> void:
+	if amount == 0:
+		return
+	var applied := false
+	if GameState != null and GameState.has_method("add_coins"):
+		GameState.add_coins(amount)
+		applied = true
+	if ShopManager != null:
+		if applied and ShopManager.has_method("_sync_from_game_state"):
+			ShopManager._sync_from_game_state(true)
+		elif ShopManager.has_method("add_coins"):
+			ShopManager.add_coins(amount)
